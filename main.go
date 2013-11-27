@@ -4,37 +4,53 @@ import (
 	_ "code.google.com/p/odbc"
 	"database/sql"
 	"fmt"
+	"strconv"
 )
 
+//var dbNames = [11]string{"QunInfo1", "QunInfo2", "QunInfo3", "QunInfo4", "QunInfo5", "QunInfo6", "QunInfo7", "QunInfo8", "QunInfo9", "QunInfo10", "QunInfo11"}
+var dbNames = [1]string{"GroupData1"}
+
 func main() {
-	//conn, err := sql.Open("odbc", "driver={sql server};server=192.168.1.12;port=1433;uid=sa;pwd=password;database=QunInfo11")
-	conn, err := sql.Open("odbc", "driver={sql server};server=localhost;port=1433;uid=sa;pwd=password;database=QunInfo11")
+	for _, dbName := range dbNames {
 
-	if err != nil {
-		fmt.Println("Connecting Error")
-		return
-	}
-	defer conn.Close()
+		conn, err := db(dbName)
 
-	names := getTableNames(conn)
-	//getTableNames(conn)
-
-	//f, err := os.OpenFile("GroupData1.csv", os.O_RDWR|os.O_CREATE, 0666) //其实这里的 O_RDWR应该是 O_RDWR|O_CREATE，也就是文件不存在的情况下就建一个空文件，但是因为windows下还有BUG，如果使用这个O_CREATE，就会直接清空文件，所以这里就不用了这个标志，你自己事先建立好文件。
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	//defer f.Close()
-
-	for _, tableName := range names {
-		//rowCount := getRowCount(conn, tableName)
-		if tableName != "" {
-			getRowCount(conn, tableName)
+		if err != nil {
+			fmt.Println("Connecting Error")
+			return
 		}
+
+		names := getTableNames(conn)
+		//getTableNames(conn)
+
+		//f, err := os.OpenFile("GroupData1.csv", os.O_RDWR|os.O_CREATE, 0666) //其实这里的 O_RDWR应该是 O_RDWR|O_CREATE，也就是文件不存在的情况下就建一个空文件，但是因为windows下还有BUG，如果使用这个O_CREATE，就会直接清空文件，所以这里就不用了这个标志，你自己事先建立好文件。
+		//if err != nil {
+		//	panic(err)
+		//}
+
+		//defer f.Close()
+
+		for _, tableName := range names {
+			//rowCount := getRowCount(conn, tableName)
+			if tableName != "" && tableName != "dtproperties" {
+				rowCount := getRowCount(conn, tableName)
+				max, min := getMaxMinField(conn, tableName, "QunNum")
+				fmt.Println(tableName + "," + strconv.Itoa(rowCount) + "," + strconv.Itoa(max) + "," + strconv.Itoa(min))
+			}
+		}
+
+		fmt.Printf("%s\n", "finish")
+		conn.Close()
 	}
 
-	fmt.Printf("%s\n", "finish")
 	return
+}
+
+/**
+ * 数据库连接
+ */
+func db(dbName string) (*sql.DB, error) {
+	return sql.Open("odbc", "driver={sql server};server=localhost;port=1433;uid=sa;pwd=liuawen99;database="+dbName)
 }
 
 /**
@@ -68,7 +84,7 @@ func getTableNames(conn *sql.DB) []string {
  * 获取表的记录数
  */
 func getRowCount(conn *sql.DB, tableName string) int {
-	fmt.Println(tableName)
+	//fmt.Println(tableName)
 	var cnt int = 0
 	row, err := conn.Query("select count(*) as cnt from " + tableName)
 	if err != nil {
@@ -83,4 +99,24 @@ func getRowCount(conn *sql.DB, tableName string) int {
 		}
 	}
 	return cnt
+}
+
+/**
+ * 获取表某个字段的最大和最小值。
+ */
+func getMaxMinField(conn *sql.DB, tableName string, fieldName string) (int, int) {
+	var maxField, minField int = 0, 0
+	row, err := conn.Query("select max(" + fieldName + ") as maxField, min(" + fieldName + ") as minField from " + tableName)
+	if err != nil {
+		fmt.Println("Query Error", err)
+		return maxField, minField
+	}
+	defer row.Close()
+	for row.Next() {
+		if err := row.Scan(&maxField, &minField); err == nil {
+			//fmt.Println(maxField)
+			return maxField, minField
+		}
+	}
+	return maxField, minField
 }
