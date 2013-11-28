@@ -8,7 +8,8 @@ import (
 )
 
 //var dbNames = [11]string{"QunInfo1", "QunInfo2", "QunInfo3", "QunInfo4", "QunInfo5", "QunInfo6", "QunInfo7", "QunInfo8", "QunInfo9", "QunInfo10", "QunInfo11"}
-var dbNames = [1]string{"GroupData1"}
+//var dbNames = [11]string{"GroupData1", "GroupData2", "GroupData3", "GroupData4", "GroupData5", "GroupData6", "GroupData7", "GroupData8", "GroupData9", "GroupData10", "GroupData11"}
+var dbNames = [1]string{"GroupData11"}
 
 func main() {
 	for _, dbName := range dbNames {
@@ -34,7 +35,7 @@ func main() {
 			//rowCount := getRowCount(conn, tableName)
 			if tableName != "" && tableName != "dtproperties" {
 				rowCount := getRowCount(conn, tableName)
-				max, min := getMaxMinField(conn, tableName, "QunNum")
+				max, min := getMaxMinField(conn, tableName, "QQNum")
 				fmt.Println(tableName + "," + strconv.Itoa(rowCount) + "," + strconv.Itoa(max) + "," + strconv.Itoa(min))
 			}
 		}
@@ -59,6 +60,33 @@ func db(dbName string) (*sql.DB, error) {
 func getTableNames(conn *sql.DB) []string {
 	names := make([]string, 101) //不能用切片，你实际上是想返回100个元素的数组，但是最后会返回200个元素，其中100个元素为空。
 	stmt, err := conn.Prepare("select name from sys.objects where type='U'")
+	if err != nil {
+		fmt.Println("Query Error", err)
+		return names
+	}
+	defer stmt.Close()
+	row, err := stmt.Query()
+	if err != nil {
+		fmt.Println("Query Error", err)
+		return names
+	}
+	defer row.Close()
+	for row.Next() {
+		var name string
+		if err := row.Scan(&name); err == nil {
+			//fmt.Println(name)
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+/**
+ * 获取所有数据库的名字
+ */
+func getAllDataBase(conn *sql.DB) []string {
+	names := make([]string, 12) //不能用切片，你实际上是想返回100个元素的数组，但是最后会返回200个元素，其中100个元素为空。
+	stmt, err := conn.Prepare("select name from sys.databases where name like 'GroupData%'")
 	if err != nil {
 		fmt.Println("Query Error", err)
 		return names
